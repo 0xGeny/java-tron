@@ -339,8 +339,8 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //                                    });
 
 								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
+								System.out.println(System.currentTimeMillis() - timestamp);
 								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
-									System.out.println(System.currentTimeMillis() - timestamp);
 									System.out.println("Run bot");
 									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 3;
 									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
