@@ -1,5 +1,6 @@
 package org.tron.core.net.messagehandler;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 @Slf4j(topic = "net")
 @Component
@@ -88,6 +90,20 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
   public void init() {
     handleSmartContract();
+    try {
+      // This block configure the logger with handler and formatter
+      fh = new FileHandler("./MyLogFile.log");
+      myLogger.addHandler(fh);
+      SimpleFormatter formatter = new SimpleFormatter();
+      fh.setFormatter(formatter);
+
+      // the following statement is used to log any messages
+
+    } catch (SecurityException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   public void close() {
