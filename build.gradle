@@ -4,11 +4,17 @@ allprojects {
 }
 
 subprojects {
+    apply plugin: 'java'
     apply plugin: "jacoco"
     apply plugin: "maven-publish"
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+
+    ext {
+        bouncycastleVersion = '1.69'
+        junitJupiterVersion = '5.4.2'
+    }
 
     [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
