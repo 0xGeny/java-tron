@@ -1,15 +1,18 @@
 package org.tron.core.net.messagehandler;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.*;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.osgi.framework.util.ArrayMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.tron.common.es.ExecutorServiceManager;
+import org.tron.common.utils.StringUtil;
 import org.tron.core.config.args.Args;
 import org.tron.core.exception.P2pException;
 import org.tron.core.exception.P2pException.TypeEnum;
@@ -24,6 +27,17 @@ import org.tron.protos.Protocol.Inventory.InventoryType;
 import org.tron.protos.Protocol.ReasonCode;
 import org.tron.protos.Protocol.Transaction;
 import org.tron.protos.Protocol.Transaction.Contract.ContractType;
+
+import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.convertToTronAddress;
+import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.encode58Check;
+
+import org.tron.protos.contract.SmartContractOuterClass;
+import org.tron.trident.abi.datatypes.*;
+import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.*;
+import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
 
 @Slf4j(topic = "net")
 @Component
@@ -48,6 +62,29 @@ public class TransactionsMsgHandler implements TronMsgHandler {
   private final String smartEsName = "contract-msg-handler";
   private final ScheduledExecutorService smartContractExecutor = ExecutorServiceManager
       .newSingleThreadScheduledExecutor(smartEsName);
+
+  class transactionLog {
+    public String key1;
+    public ArrayMap<String, Integer> logs;
+
+    transactionLog(String key) {
+      key1 = key;
+      logs = new ArrayMap<>(0);
+    }
+
+    public transactionLog add(String key2) {
+      if (logs.get(key2) == null) logs.put(key2, 1);
+      else logs.put(key2, logs.get(key2) + 1);
+
+      return this;
+    }
+  }
+
+  ArrayMap<String, transactionLog> transactionLogs = new ArrayMap<>(0);
+  ArrayMap<String, transactionLog> peerLogs = new ArrayMap<>(0);
+
+  Logger myLogger = Logger.getLogger("MyLog");
+  FileHandler fh;
 
   public void init() {
     handleSmartContract();
@@ -100,6 +137,144 @@ public class TransactionsMsgHandler implements TronMsgHandler {
     }
   }
 
+  @Autowired
+  private TronAsyncService tronAsyncService;
+
+  private void handleChance(PeerConnection peer, TransactionMessage trx) {
+    try {
+      Transaction transaction = Transaction.parseFrom(trx.getTransactionCapsule().getData());
+      if (transaction.getRawData().getContractCount() > 0) {
+        Transaction.Contract contract = transaction.getRawData().getContract(0);
+        if (contract.getType() == ContractType.TriggerSmartContract) {
+          SmartContractOuterClass.TriggerSmartContract triggerSmartContract =
+                  contract.getParameter().unpack(SmartContractOuterClass.TriggerSmartContract.class);
+          String contractAddress =
+                  StringUtil.encode58Check(triggerSmartContract.getContractAddress().toByteArray());
+
+          if (contractAddress.equals("TZFs5ch1R1C4mmjwrrmZqeqbUgGpxY1yWB")) {
+            byte[] data = triggerSmartContract.getData().toByteArray();
+            byte[] method = Arrays.copyOfRange(data, 0, 4);
+
+            if (Arrays.equals(method, new byte[]{(byte) 0x18, (byte) 0xcb, (byte) 0xaf, (byte) 0xe5})) {
+              // token -> trx
+            }
+
+            if (Arrays.equals(method, new byte[]{(byte) 0xfb, (byte) 0x3b, (byte) 0xdb, (byte) 0x41})) {
+              // trx -> token 0xfb3bdb41
+
+              long timestamp = trx.getTransactionCapsule().getTimestamp();
+              long now = System.currentTimeMillis();
+
+              byte[] bytesAmountOut = Arrays.copyOfRange(data, 4, 4 + 0x20);
+              byte[] bytesOffset = Arrays.copyOfRange(data, 4 + 0x20, 4 + 0x40);
+              byte[] bytesToAddress = Arrays.copyOfRange(data, 4 + 0x40, 4 + 0x60);
+              byte[] bytesDeadline = Arrays.copyOfRange(data, 4 + 0x60, 4 + 0x80);
+
+              int offset = ByteBuffer.wrap(bytesOffset, bytesOffset.length - 4, 4).getInt();
+              byte[] bytesCount = Arrays.copyOfRange(data, 4 + offset, 4 + offset + 0x20);
+
+              int arraylength = ByteBuffer.wrap(bytesCount, bytesCount.length - 4, 4).getInt();
+              byte[] bytesPath0 = Arrays.copyOfRange(data, 4 + offset + 0x20, 4 + offset + 0x20 * 2);
+              byte[] bytesPath1 = Arrays.copyOfRange(data, 4 + offset + arraylength * 0x20,
+                      4 + offset + arraylength * 0x20 + 0x20);
+
+              long callValue = triggerSmartContract.getCallValue();
+              String toAddress = encode58Check(convertToTronAddress(bytesToAddress));
+              String toPath0 = encode58Check(convertToTronAddress(bytesPath0));
+              String toPath1 = encode58Check(convertToTronAddress(bytesPath1));
+
+              ArrayList<String> blacklist = new ArrayList<>(
+                      Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
+                      "TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5", "TN2EQwZpKE5UrShg11kHGyRth7LF5GbRPC"));
+
+              if (blacklist.contains(toPath0)) {
+                return;
+              }
+
+              String inetSocketAddress = peer.getInetSocketAddress().toString();
+
+              if (transactionLogs.get(toAddress) == null) {
+                transactionLogs.put(toAddress, new transactionLog(toAddress));
+              }
+              transactionLogs.put(toAddress, transactionLogs.get(toAddress).add(inetSocketAddress));
+
+              if (peerLogs.get(inetSocketAddress) == null) {
+                peerLogs.put(inetSocketAddress, new transactionLog(inetSocketAddress));
+              }
+              peerLogs.put(inetSocketAddress, peerLogs.get(inetSocketAddress).add(toAddress));
+
+              myLogger.info(String.format("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now,
+                      timestamp, now - timestamp, peer.getInetSocketAddress(), toAddress, callValue,
+                      new BigInteger(1, bytesAmountOut), toPath1));
+
+              System.out.printf("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now, timestamp,
+                      now - timestamp, peer.getInetSocketAddress(), toAddress, callValue,
+                      new BigInteger(1, bytesAmountOut), toPath1);
+              try {
+//                                long trx_amount = (long) (Math.random() * 100);
+                long trx_amount = 10;
+                long amount = trx_amount * 1000000L;
+                String meme_contract = toPath1;
+
+                ArrayList<String> approved = new ArrayList<>(
+                        Arrays.asList("TAt4ufXFaHZAEV44ev7onThjTnF61SEaEM",
+                                "TCGPc27oyS2x7S5pex7ssyZxZ2edPWonk2",
+                                "TE2T2vLnEQT1XW647EAQAHWqd6NZL1hweR",
+                                "TPeoxx1VhUMnAUyjwWfximDYFDQaxNQQ45",
+                                "TF7ixydn7nfCgj9wQj3fRdKRAvsZ8egHcx",
+                                "TQzUXP5eXHwrRMou9KYQQq7wEmu8KQF7mX",
+                                "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+                                "TRGEYcmBSAz3PswhtAHcUPjGbuGr1H9Fza",
+                                "TSig7sWzEL2K83mkJMQtbyPpiVSbR6pZnb",
+                                "TVXmroHbJsJ6rVm3wGn2G9723yz3Kbqp9x",
+                                "TWjuiXpamjvm6DeuAUE5vAusQ2QiyQr5JY",
+                                "TXL6rJbvmjD46zeN1JssfgxvSo99qC8MRT")
+                );
+
+                if (!approved.contains(meme_contract)) {
+                  return;
+                }
+
+                CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(amount,
+                        meme_contract);
+                amountOutFuture.thenAccept(amountOut -> {
+//                                    System.out.println("Amount out: " + amountOut);
+//                                    CompletableFuture<Void> approveFuture = tronAsyncService.approve(meme_contract);
+//                                    approveFuture.thenRun(() -> {
+//                                        CompletableFuture<Void> swapTokensFuture = tronAsyncService
+//                                        .swapExactETHForTokens(amount, amountOut, meme_contract);
+//                                        swapTokensFuture.join();  // Wait for the swap to complete
+//                                        System.out.println("Swap completed!");
+//                                    });
+                  if (System.currentTimeMillis() - timestamp < 100) {
+                    System.out.println("Run bot");
+                    long deadline = (int)(transaction.getRawData().getTimestamp() / 1000) + 3;
+                    int count = (int) (Math.random() * 3 + 2);
+                    for (int i = 0; i < count; i++) {
+                      tronAsyncService.swapExactETHForTokens(amount, amountOut, meme_contract, deadline);
+                    }
+                    for (int i = 0; i < count; i++) {
+                      tronAsyncService.swapExactTokensForETH(amount, amountOut, meme_contract, deadline);
+                    }
+                  }
+                }).exceptionally(ex -> {
+                  System.err.println("Error occurred: " + ex.getMessage());
+                  return null;
+                });
+
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+//                            System.out.println(getAmountOut(100 * 1000000L, toPath1));
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
+  }
+
   private void handleSmartContract() {
     smartContractExecutor.scheduleWithFixedDelay(() -> {
       try {
@@ -127,20 +302,22 @@ public class TransactionsMsgHandler implements TronMsgHandler {
       return;
     }
 
-    try {
-      tronNetDelegate.pushTransaction(trx.getTransactionCapsule());
-      advService.broadcast(trx);
-    } catch (P2pException e) {
-      logger.warn("Trx {} from peer {} process failed. type: {}, reason: {}",
-          trx.getMessageId(), peer.getInetAddress(), e.getType(), e.getMessage());
-      if (e.getType().equals(TypeEnum.BAD_TRX)) {
-        peer.setBadPeer(true);
-        peer.disconnect(ReasonCode.BAD_TX);
-      }
-    } catch (Exception e) {
-      logger.error("Trx {} from peer {} process failed", trx.getMessageId(), peer.getInetAddress(),
-          e);
-    }
+    handleChance(peer, trx);
+
+//    try {
+//      tronNetDelegate.pushTransaction(trx.getTransactionCapsule());
+//      advService.broadcast(trx);
+//    } catch (P2pException e) {
+//      logger.warn("Trx {} from peer {} process failed. type: {}, reason: {}",
+//          trx.getMessageId(), peer.getInetAddress(), e.getType(), e.getMessage());
+//      if (e.getType().equals(TypeEnum.BAD_TRX)) {
+//        peer.setBadPeer(true);
+//        peer.disconnect(ReasonCode.BAD_TX);
+//      }
+//    } catch (Exception e) {
+//      logger.error("Trx {} from peer {} process failed", trx.getMessageId(), peer.getInetAddress(),
+//          e);
+//    }
   }
 
   class TrxEvent {
