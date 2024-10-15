@@ -67,7 +67,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 	private final ScheduledExecutorService smartContractExecutor = ExecutorServiceManager
 			.newSingleThreadScheduledExecutor(smartEsName);
 
-	class transactionLog {
+	static class transactionLog {
 		public String key1;
 		public ArrayMap<String, Integer> logs;
 
@@ -101,10 +101,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
 			// the following statement is used to log any messages
 
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (SecurityException | IOException ignored) {
 		}
 	}
 
@@ -301,7 +298,6 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //                                long trx_amount = (long) (Math.random() * 100);
 							long trx_amount = 10;
 							long amount = trx_amount * 1000000L;
-							String meme_contract = toPath1;
 
 							ArrayList<String> approved = new ArrayList<>(
 									Arrays.asList("TAt4ufXFaHZAEV44ev7onThjTnF61SEaEM",
@@ -318,12 +314,12 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 											"TXL6rJbvmjD46zeN1JssfgxvSo99qC8MRT")
 							);
 
-							if (!approved.contains(meme_contract)) {
+							if (!approved.contains(toPath1)) {
 								return;
 							}
 
 							CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(amount,
-									meme_contract);
+									toPath1);
 							amountOutFuture.thenAccept(amountOut -> {
 //                                    System.out.println("Amount out: " + amountOut);
 //                                    CompletableFuture<Void> approveFuture = tronAsyncService.approve(meme_contract);
@@ -339,10 +335,10 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									int count1 = (int) (Math.random() * 3 + 2);
 									int count2 = count1 + (int) (Math.random() * 3);
 									for (int i = 0; i < count1; i++) {
-										tronAsyncService.swapExactETHForTokens(amount, amountOut, meme_contract, new_deadline);
+										tronAsyncService.swapExactETHForTokens(amount, amountOut, toPath1, new_deadline);
 									}
 									for (int i = 0; i < count2; i++) {
-										tronAsyncService.swapExactTokensForETH(amount, amountOut, meme_contract, new_deadline);
+										tronAsyncService.swapExactTokensForETH(amount, amountOut, toPath1, new_deadline);
 									}
 								}
 							}).exceptionally(ex -> {
@@ -350,8 +346,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 								return null;
 							});
 
-						} catch (Exception e) {
-							e.printStackTrace();
+						} catch (Exception ignored) {
 						}
 //                            System.out.println(getAmountOut(100 * 1000000L, toPath1));
 					}
@@ -365,7 +360,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 	private void handleSmartContract() {
 		smartContractExecutor.scheduleWithFixedDelay(() -> {
 			try {
-				while (queue.size() < MAX_SMART_CONTRACT_SUBMIT_SIZE && smartContractQueue.size() > 0) {
+				while (queue.size() < MAX_SMART_CONTRACT_SUBMIT_SIZE && !smartContractQueue.isEmpty()) {
 					TrxEvent event = smartContractQueue.take();
 					trxHandlePool.submit(() -> handleTransaction(event.getPeer(), event.getMsg()));
 				}

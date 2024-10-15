@@ -107,7 +107,6 @@ public class TronAsyncService {
 
 			return CompletableFuture.completedFuture(null);
 		} catch (Exception e) {
-			e.printStackTrace();
 			return CompletableFuture.completedFuture(null);
 		}
 	}
@@ -127,7 +126,6 @@ public class TronAsyncService {
 
 			return CompletableFuture.completedFuture(null);
 		} catch (Exception e) {
-			e.printStackTrace();
 			return CompletableFuture.completedFuture(null);
 		}
 	}
