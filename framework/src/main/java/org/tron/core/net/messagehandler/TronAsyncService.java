@@ -94,7 +94,7 @@ public class TronAsyncService {
             List<String> path = Arrays.asList(meme_contract, WTRX_Address);
 
             Function swapExactTokensForETH = new Function("swapExactTokensForETH", Arrays.asList(new Uint256(meme_amount)
-                    , new Uint256((long) (amount * 0.997 + 1))
+                    , new Uint256((long) (amount * 0.994 + 1))
                     , new DynamicArray<>(Address.class, typeMap(path, Address.class)), new Address(
                             keyPair.toHexAddress()), new Uint256(deadline)),
                     Arrays.asList());
