@@ -274,6 +274,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
 						if (blacklist.contains(toPath0)) {
 							// blacklist
+
 							return;
 						}
 
