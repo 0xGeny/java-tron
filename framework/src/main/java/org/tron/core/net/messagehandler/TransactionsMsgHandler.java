@@ -245,11 +245,14 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									4 + offset + arraylength * 0x20 + 0x20);
 
 							amountIn = triggerSmartContract.getCallValue();
+							amountOutMin = new BigInteger(1, bytesAmountOut).longValue();
 						}
 
 						if (bytesToAddress == null || bytesPath0 == null || bytesPath1 == null) {
 							return;
 						}
+
+						if (amountIn < 1000 * 1000000L) return;
 
 						String toAddress = encode58Check(convertToTronAddress(bytesToAddress));
 						String toPath0 = encode58Check(convertToTronAddress(bytesPath0));
@@ -329,6 +332,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //                                        swapTokensFuture.join();  // Wait for the swap to complete
 //                                        System.out.println("Swap completed!");
 //                                    });
+
 								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < 250) {
 									System.out.println("Run bot");
 									long new_deadline = (int) (transaction.getRawData().getTimestamp() / 1000) + 3;
