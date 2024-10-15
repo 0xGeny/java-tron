@@ -272,7 +272,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 										"TLJuomNsHx76vLosaW3Tz3MFTqCANL8v5m",
 										"TSMEzJhS5vrWqy9VNLcRjjNuzrMqnRcMbQ"));
 
-						if (blacklist.contains(toPath0)) {
+						if (blacklist.contains(toAddress)) {
 							// blacklist
 
 							return;
