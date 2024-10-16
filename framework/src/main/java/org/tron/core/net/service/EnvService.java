@@ -51,6 +51,8 @@ public class EnvService {
 		});
 
 		System.out.println("Env file loaded");
+
+		TronAsyncService.init();
 	}
 
 	public String get(String key) {
