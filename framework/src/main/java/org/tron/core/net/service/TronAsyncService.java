@@ -33,8 +33,8 @@ public class TronAsyncService {
 	public CompletableFuture<BigInteger> getAmountOut(long amount, String meme_contract) {
 		try {
 			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
-			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
-			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+			ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
+//			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
 
 			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
@@ -62,8 +62,7 @@ public class TronAsyncService {
 	                                                     long deadline) {
 		try {
 			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
-			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
-			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+			ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
 
 			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
@@ -99,8 +98,7 @@ public class TronAsyncService {
 	                                                     long deadline) {
 		try {
 			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
-			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
-			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+			ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
 
 			List<String> path = Arrays.asList(meme_contract, WTRX_Address);
 
@@ -123,8 +121,7 @@ public class TronAsyncService {
 	public CompletableFuture<Void> approve(String meme_contract) {
 		try {
 			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
-			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
-			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+			ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
 
 			BigInteger bigInt = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
