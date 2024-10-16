@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.tron.common.es.ExecutorServiceManager;
 import org.tron.common.utils.StringUtil;
 import org.tron.core.config.args.Args;
+import org.tron.core.db.Manager;
 import org.tron.core.exception.P2pException;
 import org.tron.core.exception.P2pException.TypeEnum;
 import org.tron.core.net.TronNetDelegate;
@@ -338,10 +339,9 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //                                    });
 
 								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
-
 								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
 									System.out.println("Run bot");
-									long new_deadline = (int) (transaction.getRawData().getTimestamp() / 1000) + 3;
+									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 3;
 									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
 									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
 									for (int i = 0; i < count1; i++) {
