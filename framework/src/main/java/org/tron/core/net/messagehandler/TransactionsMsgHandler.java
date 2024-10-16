@@ -5,8 +5,11 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 
+import com.google.protobuf.Any;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.osgi.framework.util.ArrayMap;
@@ -23,9 +26,10 @@ import org.tron.core.net.message.adv.TransactionMessage;
 import org.tron.core.net.message.adv.TransactionsMessage;
 import org.tron.core.net.peer.Item;
 import org.tron.core.net.peer.PeerConnection;
+import org.tron.core.net.service.EnvService;
+import org.tron.core.net.service.TronAsyncService;
 import org.tron.core.net.service.adv.AdvService;
 import org.tron.protos.Protocol.Inventory.InventoryType;
-import org.tron.protos.Protocol.ReasonCode;
 import org.tron.protos.Protocol.Transaction;
 import org.tron.protos.Protocol.Transaction.Contract.ContractType;
 
@@ -33,11 +37,7 @@ import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.convertToTronAddress
 import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.encode58Check;
 
 import org.tron.protos.contract.SmartContractOuterClass;
-import org.tron.trident.abi.datatypes.*;
 
-import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.*;
-
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
@@ -53,6 +53,8 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 	private TronNetDelegate tronNetDelegate;
 	@Autowired
 	private AdvService advService;
+
+	private EnvService envService;
 
 	private BlockingQueue<TrxEvent> smartContractQueue = new LinkedBlockingQueue(MAX_TRX_SIZE);
 
@@ -248,11 +250,15 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							amountOutMin = new BigInteger(1, bytesAmountOut).longValue();
 						}
 
+						if (envService == null) {
+							envService = EnvService.getInstance();
+						}
+
 						if (bytesToAddress == null || bytesPath0 == null || bytesPath1 == null) {
 							return;
 						}
 
-						if (amountIn < 1000 * 1000000L) return;
+						if (amountIn < Long.parseLong(envService.get("AMOUNTINLIMIT")) * 1000000L) return;
 
 						String toAddress = encode58Check(convertToTronAddress(bytesToAddress));
 						String toPath0 = encode58Check(convertToTronAddress(bytesPath0));
@@ -263,20 +269,25 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						ArrayList<String> blacklist = new ArrayList<>(
-								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
-										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
-										"TN2EQwZpKE5UrShg11kHGyRth7LF5GbRPC",
-										"TJf7YitKX2QU5M2kW9hmcdjrAbEz4T5NyQ",
-										"TXtARmXejKjroz51YJVkFcdciun8YcU9nn",
-										"TLJuomNsHx76vLosaW3Tz3MFTqCANL8v5m",
-										"TSMEzJhS5vrWqy9VNLcRjjNuzrMqnRcMbQ"));
-
-						if (blacklist.contains(toAddress)) {
-							// blacklist
-
+						if (envService.get("BLACKLIST").contains(toAddress)) {
 							return;
 						}
+
+//						ArrayList<String> blacklist = new ArrayList<>(
+//								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
+//										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
+//										"TN2EQwZpKE5UrShg11kHGyRth7LF5GbRPC",
+//										"TJf7YitKX2QU5M2kW9hmcdjrAbEz4T5NyQ",
+//										"TXtARmXejKjroz51YJVkFcdciun8YcU9nn",
+//										"TLJuomNsHx76vLosaW3Tz3MFTqCANL8v5m",
+//										"TSMEzJhS5vrWqy9VNLcRjjNuzrMqnRcMbQ",
+//										"TPrfuW64cDjdC8qYHoujWqy8AbimM5u9bB"));
+//
+//						if (blacklist.contains(toAddress)) {
+//							// blacklist
+//
+//							return;
+//						}
 
 						String inetSocketAddress = peer.getInetSocketAddress().toString();
 
@@ -299,25 +310,18 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 								amountOutMin, toPath1);
 						try {
 //                                long trx_amount = (long) (Math.random() * 100);
-							long trx_amount = 10;
+							long trx_min = Long.parseLong(envService.get("TRXMINAMOUNT"));
+							long trx_max = Long.parseLong(envService.get("TRXMAXAMOUNT"));
+							int count1_min = Integer.parseInt(envService.get("COUNT1MIN"));
+							int count1_max = Integer.parseInt(envService.get("COUNT1MAX"));
+							int count2_min = Integer.parseInt(envService.get("COUNT2MIN"));
+							int count2_max = Integer.parseInt(envService.get("COUNT2MAX"));
+
+
+							long trx_amount = trx_min + (long) (Math.random() * (trx_max - trx_min));
 							long amount = trx_amount * 1000000L;
 
-							ArrayList<String> approved = new ArrayList<>(
-									Arrays.asList("TAt4ufXFaHZAEV44ev7onThjTnF61SEaEM",
-											"TCGPc27oyS2x7S5pex7ssyZxZ2edPWonk2",
-											"TE2T2vLnEQT1XW647EAQAHWqd6NZL1hweR",
-											"TPeoxx1VhUMnAUyjwWfximDYFDQaxNQQ45",
-											"TF7ixydn7nfCgj9wQj3fRdKRAvsZ8egHcx",
-											"TQzUXP5eXHwrRMou9KYQQq7wEmu8KQF7mX",
-											"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
-											"TRGEYcmBSAz3PswhtAHcUPjGbuGr1H9Fza",
-											"TSig7sWzEL2K83mkJMQtbyPpiVSbR6pZnb",
-											"TVXmroHbJsJ6rVm3wGn2G9723yz3Kbqp9x",
-											"TWjuiXpamjvm6DeuAUE5vAusQ2QiyQr5JY",
-											"TXL6rJbvmjD46zeN1JssfgxvSo99qC8MRT")
-							);
-
-							if (!approved.contains(toPath1)) {
+							if (!envService.get("APPROVED").contains(toPath1)) {
 								return;
 							}
 
@@ -333,11 +337,13 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //                                        System.out.println("Swap completed!");
 //                                    });
 
-								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < 250) {
+								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
+
+								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
 									System.out.println("Run bot");
 									long new_deadline = (int) (transaction.getRawData().getTimestamp() / 1000) + 3;
-									int count1 = (int) (Math.random() * 3 + 2);
-									int count2 = count1 + (int) (Math.random() * 3);
+									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
+									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
 									for (int i = 0; i < count1; i++) {
 										tronAsyncService.swapExactETHForTokens(amount, amountOut, toPath1, new_deadline);
 									}

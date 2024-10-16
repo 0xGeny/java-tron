@@ -1,4 +1,4 @@
-package org.tron.core.net.messagehandler;
+package org.tron.core.net.service;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -29,13 +29,13 @@ public class TronAsyncService {
 	public static String routerAddress = "TZFs5ch1R1C4mmjwrrmZqeqbUgGpxY1yWB";
 	public static long feelimit = 10000000L;
 
-	static KeyPair keyPair = new KeyPair("61ed92a0c8d164e3e40fd72e9babf730e23e250490e885f266afdca722b7222f");
-	//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
-	static ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
-
 	@Async
 	public CompletableFuture<BigInteger> getAmountOut(long amount, String meme_contract) {
 		try {
+			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
+			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
+			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+
 			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
 			Function getAmount = new Function("getAmountsOut", Arrays.asList(new Uint256(amount),
@@ -61,6 +61,10 @@ public class TronAsyncService {
 	public CompletableFuture<Void> swapExactETHForTokens(long amount, BigInteger meme_amount, String meme_contract,
 	                                                     long deadline) {
 		try {
+			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
+			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
+			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+
 			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
 			Function swapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(new Uint256(meme_amount)
@@ -94,6 +98,10 @@ public class TronAsyncService {
 	public CompletableFuture<Void> swapExactTokensForETH(long amount, BigInteger meme_amount, String meme_contract,
 	                                                     long deadline) {
 		try {
+			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
+			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
+			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+
 			List<String> path = Arrays.asList(meme_contract, WTRX_Address);
 
 			Function swapExactTokensForETH = new Function("swapExactTokensForETH", Arrays.asList(new Uint256(meme_amount)
@@ -114,6 +122,10 @@ public class TronAsyncService {
 	@Async
 	public CompletableFuture<Void> approve(String meme_contract) {
 		try {
+			KeyPair keyPair = new KeyPair(EnvService.getInstance().get("PK"));
+			//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
+			ApiWrapper wrapper = ApiWrapper.ofMainnet(keyPair.toPrivateKey());
+
 			BigInteger bigInt = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
 			Function approve = new Function("approve", Arrays.asList(new Address(routerAddress),

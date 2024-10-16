@@ -85,6 +85,8 @@ dependencies {
     implementation project(':utils')
     implementation project(':abi')
 
+    implementation 'io.github.cdimascio:java-dotenv:5.2.2'
+
     implementation 'com.google.guava:guava:28.0-jre'
 }
 

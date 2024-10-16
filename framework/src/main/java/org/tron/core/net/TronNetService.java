@@ -20,6 +20,7 @@ import org.tron.core.net.messagehandler.TransactionsMsgHandler;
 import org.tron.core.net.peer.PeerConnection;
 import org.tron.core.net.peer.PeerManager;
 import org.tron.core.net.peer.PeerStatusCheck;
+import org.tron.core.net.service.EnvService;
 import org.tron.core.net.service.adv.AdvService;
 import org.tron.core.net.service.effective.EffectiveCheckService;
 import org.tron.core.net.service.fetchblock.FetchBlockService;
@@ -73,6 +74,9 @@ public class TronNetService {
   @Autowired
   private EffectiveCheckService effectiveCheckService;
 
+  @Autowired
+  private EnvService envService;
+
   private volatile boolean init;
 
   private static void setP2pConfig(P2pConfig config) {
@@ -95,6 +99,7 @@ public class TronNetService {
       PeerManager.init();
       relayService.init();
       effectiveCheckService.init();
+      envService.init();
       logger.info("Net service start successfully");
     } catch (Exception e) {
       logger.error("Net service start failed", e);
