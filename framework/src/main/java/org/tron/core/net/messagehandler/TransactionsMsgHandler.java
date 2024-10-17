@@ -176,7 +176,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 						long timestamp = trx.getTransactionCapsule().getTimestamp();
 						long now = System.currentTimeMillis();
 						long amountIn = 0L;
-						long amountOutMin = 0L;
+						BigInteger amountOutMin = BigInteger.valueOf(0);
 						byte[] bytesPath0 = null;
 						byte[] bytesPath1 = null;
 						byte[] bytesToAddress = null;
@@ -216,7 +216,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									4 + offset + arraylength * 0x20 + 0x20);
 
 							amountIn = new BigInteger(1, bytesAmountIn).longValue();
-							amountOutMin = new BigInteger(1, bytesAmountOut).longValue();
+							amountOutMin = new BigInteger(1, bytesAmountOut);
 							deadline = new BigInteger(1, bytesDeadline).longValue();
 						}
 
@@ -248,7 +248,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									4 + offset + arraylength * 0x20 + 0x20);
 
 							amountIn = triggerSmartContract.getCallValue();
-							amountOutMin = new BigInteger(1, bytesAmountOut).longValue();
+							amountOutMin = new BigInteger(1, bytesAmountOut);
 						}
 
 						if (envService == null) {
@@ -319,8 +319,8 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							int count2_max = Integer.parseInt(envService.get("COUNT2MAX"));
 
 
-							long trx_amount = trx_min + (long) (Math.random() * (trx_max - trx_min));
-							long amount = trx_amount * 1000000L;
+							double trx_amount = trx_min + Math.random() * (trx_max - trx_min);
+							long amount = (long) (trx_amount * 1000000L);
 
 							if (!envService.get("APPROVED").contains(toPath1)) {
 								return;
