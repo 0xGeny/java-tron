@@ -385,7 +385,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 		CompletableFuture<Uint256> balanceOfFuture = tronAsyncService.balanceOf(meme_contract);
 		balanceOfFuture.thenAccept(balanceOf -> {
 
-			if (!balanceOf.equals(BigInteger.ZERO)) {
+			if (!balanceOf.getValue().equals(BigInteger.ZERO)) {
 				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
 						Arrays.asList(meme_contract, WTRX_Address));
 
