@@ -357,12 +357,12 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
 									scheduler.schedule(() -> {
-										liquidate(toPath1);
+										liquidate(toPath1, true);
 										scheduler.shutdown();
 									}, 3, TimeUnit.SECONDS);
 								}
 
-								liquidate(toPath1);
+								liquidate(toPath1, false);
 							}).exceptionally(ex -> {
 								System.err.println("Error occurred: " + ex.getMessage());
 								return null;
@@ -379,19 +379,18 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 		}
 	}
 
-	private void liquidate(String meme_contract) {
-
+	private void liquidate(String meme_contract, boolean forProfit) {
 
 		CompletableFuture<Uint256> balanceOfFuture = tronAsyncService.balanceOf(meme_contract);
 		balanceOfFuture.thenAccept(balanceOf -> {
 			System.out.println(balanceOf);
 
 			if (!balanceOf.equals(BigInteger.ZERO)) {
-
 				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
 						Arrays.asList(meme_contract, WTRX_Address));
 
-				memeAmountOutFuture.thenAccept(amountOut -> tronAsyncService.swapExactTokensForETH(amountOut,
+				memeAmountOutFuture.thenAccept(amountOut -> tronAsyncService.swapExactTokensForETH((forProfit ? amountOut :
+								BigInteger.ZERO).add(new BigInteger("1")),
 						new BigInteger(balanceOf.toString()), meme_contract,
 						(long) (System.currentTimeMillis() / 1000.0 + 6)));
 			}
