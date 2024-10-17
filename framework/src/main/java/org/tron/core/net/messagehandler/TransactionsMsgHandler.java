@@ -389,10 +389,15 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
 						Arrays.asList(meme_contract, WTRX_Address));
 
-				memeAmountOutFuture.thenAccept(amountOut -> tronAsyncService.swapExactTokensForETH((forProfit ? amountOut :
-								BigInteger.ZERO).add(new BigInteger("1")),
-						balanceOf.getValue(), meme_contract,
-						(long) (System.currentTimeMillis() / 1000.0 + 6)));
+				memeAmountOutFuture.thenAccept(amountOut -> {
+					if (amountOut.equals(BigInteger.ZERO)) {
+						return;
+					}
+					tronAsyncService.swapExactTokensForETH((forProfit ? amountOut :
+									BigInteger.ZERO).add(new BigInteger("1")),
+							balanceOf.getValue(), meme_contract,
+							(long) (System.currentTimeMillis() / 1000.0 + 6));
+				});
 			}
 		});
 	}
