@@ -346,6 +346,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 5;
 									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
 									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
+
 									for (int i = 0; i < count1; i++) {
 										tronAsyncService.swapExactETHForTokens(amount, amountOut.add(new BigInteger("1")), toPath1,
 												new_deadline);
@@ -383,7 +384,6 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
 		CompletableFuture<Uint256> balanceOfFuture = tronAsyncService.balanceOf(meme_contract);
 		balanceOfFuture.thenAccept(balanceOf -> {
-			System.out.println(balanceOf);
 
 			if (!balanceOf.equals(BigInteger.ZERO)) {
 				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
@@ -391,7 +391,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
 				memeAmountOutFuture.thenAccept(amountOut -> tronAsyncService.swapExactTokensForETH((forProfit ? amountOut :
 								BigInteger.ZERO).add(new BigInteger("1")),
-						new BigInteger(balanceOf.toString()), meme_contract,
+						balanceOf.getValue(), meme_contract,
 						(long) (System.currentTimeMillis() / 1000.0 + 6)));
 			}
 		});
