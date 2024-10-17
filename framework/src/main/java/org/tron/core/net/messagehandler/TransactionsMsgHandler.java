@@ -352,7 +352,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 												new_deadline);
 									}
 									for (int i = 0; i < count2; i++) {
-										tronAsyncService.swapExactTokensForETH(new BigInteger(String.valueOf((long) (amount * 0.994009 + 1))), amountOut, toPath1, new_deadline);
+										tronAsyncService.swapExactTokensForETH(BigInteger.valueOf(amount + 1), amountOut, toPath1, new_deadline);
 									}
 
 									ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
