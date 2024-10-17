@@ -82,34 +82,30 @@ public class TronAsyncService {
 		if (wrapper == null) {
 			return CompletableFuture.completedFuture(null);
 		}
-		try {
-			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
-			Function swapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(new Uint256(meme_amount)
-					, new DynamicArray<>(Address.class, typeMap(path, Address.class)), new Address(
-							keyPair.toHexAddress()), new Uint256(deadline)),
-					Arrays.asList());
+		List<String> path = Arrays.asList(WTRX_Address, meme_contract);
 
-			String encoded = FunctionEncoder.encode(swapExactETHForTokens);
+		Function swapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(new Uint256(meme_amount)
+				, new DynamicArray<>(Address.class, typeMap(path, Address.class)), new Address(
+						keyPair.toHexAddress()), new Uint256(deadline)),
+				Arrays.asList());
 
-			Contract.TriggerSmartContract trigger =
-					Contract.TriggerSmartContract.newBuilder().setOwnerAddress(ApiWrapper.parseAddress(keyPair.toHexAddress()))
-							.setCallValue(amount)
-							.setContractAddress(ApiWrapper.parseAddress(routerAddress)).setData(ApiWrapper.parseHex(encoded)).build();
+		String encoded = FunctionEncoder.encode(swapExactETHForTokens);
 
-			Response.TransactionExtention txnExt = wrapper.blockingStub.triggerConstantContract(trigger);
-			Chain.Transaction unsignedTxn =
-					txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(feelimit)).build();
+		Contract.TriggerSmartContract trigger =
+				Contract.TriggerSmartContract.newBuilder().setOwnerAddress(ApiWrapper.parseAddress(keyPair.toHexAddress()))
+						.setCallValue(amount)
+						.setContractAddress(ApiWrapper.parseAddress(routerAddress)).setData(ApiWrapper.parseHex(encoded)).build();
 
-			Chain.Transaction signedTransaction = wrapper.signTransaction(unsignedTxn);
+		Response.TransactionExtention txnExt = wrapper.blockingStub.triggerConstantContract(trigger);
+		Chain.Transaction unsignedTxn =
+				txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(feelimit)).build();
 
-			wrapper.broadcastTransaction(signedTransaction);
+		Chain.Transaction signedTransaction = wrapper.signTransaction(unsignedTxn);
 
-			return CompletableFuture.completedFuture(null);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return CompletableFuture.completedFuture(null);
-		}
+		wrapper.broadcastTransaction(signedTransaction);
+
+		return CompletableFuture.completedFuture(null);
 	}
 
 	@Async
