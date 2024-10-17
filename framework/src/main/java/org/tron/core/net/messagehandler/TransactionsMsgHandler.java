@@ -34,10 +34,12 @@ import org.tron.protos.Protocol.Inventory.InventoryType;
 import org.tron.protos.Protocol.Transaction;
 import org.tron.protos.Protocol.Transaction.Contract.ContractType;
 
+import static org.tron.core.net.service.TronAsyncService.WTRX_Address;
 import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.convertToTronAddress;
 import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.encode58Check;
 
 import org.tron.protos.contract.SmartContractOuterClass;
+import org.tron.trident.abi.datatypes.generated.Uint256;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.FileHandler;
@@ -318,7 +320,6 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							int count2_min = Integer.parseInt(envService.get("COUNT2MIN"));
 							int count2_max = Integer.parseInt(envService.get("COUNT2MAX"));
 
-
 							double trx_amount = trx_min + Math.random() * (trx_max - trx_min);
 							long amount = (long) (trx_amount * 1000000L);
 
@@ -326,8 +327,8 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 								return;
 							}
 
-							CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(amount,
-									toPath1);
+							CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(new Uint256(amount),
+									Arrays.asList(WTRX_Address, toPath1));
 							amountOutFuture.thenAccept(amountOut -> {
 //                                    System.out.println("Amount out: " + amountOut);
 //                                    CompletableFuture<Void> approveFuture = tronAsyncService.approve(meme_contract);
@@ -341,17 +342,27 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
 								System.out.println(System.currentTimeMillis() - timestamp);
 								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
-									System.out.println("Run bot");
-									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 3;
+									System.out.println("Run bot -- " + trx.getTransactionCapsule().getTransactionId());
+									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 5;
 									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
 									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
 									for (int i = 0; i < count1; i++) {
-										tronAsyncService.swapExactETHForTokens(amount, amountOut, toPath1, new_deadline);
+										tronAsyncService.swapExactETHForTokens(amount, amountOut.add(new BigInteger("1")), toPath1,
+												new_deadline);
 									}
 									for (int i = 0; i < count2; i++) {
-										tronAsyncService.swapExactTokensForETH(amount, amountOut, toPath1, new_deadline);
+										tronAsyncService.swapExactTokensForETH(new BigInteger(String.valueOf((long) (amount * 0.994009 + 1))), amountOut, toPath1, new_deadline);
 									}
+
+									ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+									scheduler.schedule(() -> {
+										liquidate(toPath1);
+										scheduler.shutdown();
+									}, 3, TimeUnit.SECONDS);
 								}
+
+								liquidate(toPath1);
 							}).exceptionally(ex -> {
 								System.err.println("Error occurred: " + ex.getMessage());
 								return null;
@@ -366,6 +377,25 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
+	}
+
+	private void liquidate(String meme_contract) {
+
+
+		CompletableFuture<Uint256> balanceOfFuture = tronAsyncService.balanceOf(meme_contract);
+		balanceOfFuture.thenAccept(balanceOf -> {
+			System.out.println(balanceOf);
+
+			if (!balanceOf.equals(BigInteger.ZERO)) {
+
+				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
+						Arrays.asList(meme_contract, WTRX_Address));
+
+				memeAmountOutFuture.thenAccept(amountOut -> tronAsyncService.swapExactTokensForETH(amountOut,
+						new BigInteger(balanceOf.toString()), meme_contract,
+						(long) (System.currentTimeMillis() / 1000.0 + 6)));
+			}
+		});
 	}
 
 	private void handleSmartContract() {

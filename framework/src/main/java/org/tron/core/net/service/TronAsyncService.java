@@ -52,14 +52,12 @@ public class TronAsyncService {
 	}
 
 	@Async
-	public CompletableFuture<BigInteger> getAmountOut(long amount, String meme_contract) {
+	public CompletableFuture<BigInteger> getAmountOut(Uint256 amount, List<String> path) {
 		if (wrapper == null) {
 			return CompletableFuture.completedFuture(BigInteger.ZERO);
 		}
 		try {
-			List<String> path = Arrays.asList(WTRX_Address, meme_contract);
-
-			Function getAmount = new Function("getAmountsOut", Arrays.asList(new Uint256(amount),
+			Function getAmount = new Function("getAmountsOut", Arrays.asList(amount,
 					new DynamicArray<>(Address.class, typeMap(path, Address.class))),
 					Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {
 					}));
@@ -115,7 +113,7 @@ public class TronAsyncService {
 	}
 
 	@Async
-	public CompletableFuture<Void> swapExactTokensForETH(long amount, BigInteger meme_amount, String meme_contract,
+	public CompletableFuture<Void> swapExactTokensForETH(BigInteger amount, BigInteger meme_amount, String meme_contract,
 	                                                     long deadline) {
 		if (wrapper == null) {
 			return CompletableFuture.completedFuture(null);
@@ -124,7 +122,7 @@ public class TronAsyncService {
 			List<String> path = Arrays.asList(meme_contract, WTRX_Address);
 
 			Function swapExactTokensForETH = new Function("swapExactTokensForETH", Arrays.asList(new Uint256(meme_amount)
-					, new Uint256((long) (amount * 0.994009 + 1))
+					, new Uint256(amount)
 					, new DynamicArray<>(Address.class, typeMap(path, Address.class)), new Address(
 							keyPair.toHexAddress()), new Uint256(deadline)),
 					Collections.emptyList());
@@ -157,6 +155,29 @@ public class TronAsyncService {
 			return CompletableFuture.completedFuture(null);
 		} catch (Exception e) {
 			return CompletableFuture.completedFuture(null);
+		}
+	}
+
+	@Async
+	public CompletableFuture<Uint256> balanceOf(String meme_contract) {
+		if (wrapper == null) {
+			return CompletableFuture.completedFuture(Uint256.DEFAULT);
+		}
+		try {
+			Function balanceOf = new Function("balanceOf", Arrays.asList(
+					new Address(keyPair.toHexAddress())),
+					Arrays.asList(new TypeReference<Uint256>(){}));
+
+			Response.TransactionExtention txnExt = wrapper.constantCall(keyPair.toHexAddress(), meme_contract, balanceOf);
+			String result = Numeric.toHexString(txnExt.getConstantResult(0).toByteArray());
+
+			List<Type> list = FunctionReturnDecoder.decode(result, balanceOf.getOutputParameters());
+			Uint256 balance = (Uint256) list.get(0);
+
+			return CompletableFuture.completedFuture(balance);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return CompletableFuture.completedFuture(Uint256.DEFAULT);
 		}
 	}
 }
