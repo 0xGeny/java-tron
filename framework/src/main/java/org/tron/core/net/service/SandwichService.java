@@ -40,6 +40,7 @@ public class SandwichService {
 	private final OkHttpClient okHttpClient = new OkHttpClient();
 	private String PK = null;
 	private ApiWrapper apiWrapper = null;
+	public String sWalletAddressT = null;
 	private String sWalletHexAddress = null;
 	private ByteString bsWalletAddress = null;
 	private Address addressWallet = null;
@@ -70,6 +71,7 @@ public class SandwichService {
 
 			PK = newPK;
 			apiWrapper = new ApiWrapper(sUrlGrpcEndpoint, sUrlGrpcSolidityEndpoint, PK);
+			sWalletAddressT = apiWrapper.keyPair.toBase58CheckAddress();
 			sWalletHexAddress = apiWrapper.keyPair.toHexAddress();
 			bsWalletAddress = parseAddress(sWalletHexAddress);
 			addressWallet = new Address(sWalletHexAddress);

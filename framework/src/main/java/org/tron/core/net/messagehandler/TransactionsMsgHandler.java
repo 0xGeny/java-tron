@@ -273,7 +273,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						if (envService.get("BLACKLIST").contains(toAddress)) {
+						if (envService.get("BLACKLIST").contains(toAddress) || toAddress.equals(SandwichService.getInstance().sWalletAddressT)) {
 							return;
 						}
 
