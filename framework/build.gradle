@@ -71,7 +71,7 @@ dependencies {
     implementation 'io.grpc:grpc-stub:1.31.0'
 
     implementation "org.bouncycastle:bcprov-jdk15on:1.68"
-
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
 
     testImplementation group: 'org.springframework', name: 'spring-test', version: '5.2.0.RELEASE'
     testImplementation group: 'org.springframework', name: 'spring-web', version: '5.2.0.RELEASE'

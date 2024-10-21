@@ -28,6 +28,7 @@ import org.tron.core.net.message.adv.TransactionsMessage;
 import org.tron.core.net.peer.Item;
 import org.tron.core.net.peer.PeerConnection;
 import org.tron.core.net.service.EnvService;
+import org.tron.core.net.service.SandwichService;
 import org.tron.core.net.service.TronAsyncService;
 import org.tron.core.net.service.adv.AdvService;
 import org.tron.protos.Protocol.Inventory.InventoryType;
@@ -276,33 +277,38 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-//						ArrayList<String> blacklist = new ArrayList<>(
-//								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
-//										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
-//										"TN2EQwZpKE5UrShg11kHGyRth7LF5GbRPC",
-//										"TJf7YitKX2QU5M2kW9hmcdjrAbEz4T5NyQ",
-//										"TXtARmXejKjroz51YJVkFcdciun8YcU9nn",
-//										"TLJuomNsHx76vLosaW3Tz3MFTqCANL8v5m",
-//										"TSMEzJhS5vrWqy9VNLcRjjNuzrMqnRcMbQ",
-//										"TPrfuW64cDjdC8qYHoujWqy8AbimM5u9bB"));
+						if (!envService.get("APPROVED").contains(toPath1)) {
+							return;
+						}
+
+						SandwichService.getInstance().doSandwich(toPath1);
+////						ArrayList<String> blacklist = new ArrayList<>(
+////								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
+////										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
+////										"TN2EQwZpKE5UrShg11kHGyRth7LF5GbRPC",
+////										"TJf7YitKX2QU5M2kW9hmcdjrAbEz4T5NyQ",
+////										"TXtARmXejKjroz51YJVkFcdciun8YcU9nn",
+////										"TLJuomNsHx76vLosaW3Tz3MFTqCANL8v5m",
+////										"TSMEzJhS5vrWqy9VNLcRjjNuzrMqnRcMbQ",
+////										"TPrfuW64cDjdC8qYHoujWqy8AbimM5u9bB"));
+////
+////						if (blacklist.contains(toAddress)) {
+////							// blacklist
+////
+////							return;
+////						}
 //
-//						if (blacklist.contains(toAddress)) {
-//							// blacklist
+//						String inetSocketAddress = peer.getInetSocketAddress().toString();
 //
-//							return;
+//						if (transactionLogs.get(toAddress) == null) {
+//							transactionLogs.put(toAddress, new transactionLog(toAddress));
 //						}
-
-						String inetSocketAddress = peer.getInetSocketAddress().toString();
-
-						if (transactionLogs.get(toAddress) == null) {
-							transactionLogs.put(toAddress, new transactionLog(toAddress));
-						}
-						transactionLogs.put(toAddress, transactionLogs.get(toAddress).add(inetSocketAddress));
-
-						if (peerLogs.get(inetSocketAddress) == null) {
-							peerLogs.put(inetSocketAddress, new transactionLog(inetSocketAddress));
-						}
-						peerLogs.put(inetSocketAddress, peerLogs.get(inetSocketAddress).add(toAddress));
+//						transactionLogs.put(toAddress, transactionLogs.get(toAddress).add(inetSocketAddress));
+//
+//						if (peerLogs.get(inetSocketAddress) == null) {
+//							peerLogs.put(inetSocketAddress, new transactionLog(inetSocketAddress));
+//						}
+//						peerLogs.put(inetSocketAddress, peerLogs.get(inetSocketAddress).add(toAddress));
 
 						myLogger.info(String.format("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now,
 								timestamp, now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
@@ -311,66 +317,66 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 						System.out.printf("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now, timestamp,
 								now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
 								amountOutMin, toPath1);
-						try {
-//                                long trx_amount = (long) (Math.random() * 100);
-							long trx_min = Long.parseLong(envService.get("TRXMINAMOUNT"));
-							long trx_max = Long.parseLong(envService.get("TRXMAXAMOUNT"));
-							int count1_min = Integer.parseInt(envService.get("COUNT1MIN"));
-							int count1_max = Integer.parseInt(envService.get("COUNT1MAX"));
-							int count2_min = Integer.parseInt(envService.get("COUNT2MIN"));
-							int count2_max = Integer.parseInt(envService.get("COUNT2MAX"));
-
-							double trx_amount = trx_min + Math.random() * (trx_max - trx_min);
-							long amount = (long) (trx_amount * 1000000L);
-
-							if (!envService.get("APPROVED").contains(toPath1)) {
-								return;
-							}
-
-							CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(new Uint256(amount),
-									Arrays.asList(WTRX_Address, toPath1));
-							amountOutFuture.thenAccept(amountOut -> {
-//                                    System.out.println("Amount out: " + amountOut);
-//                                    CompletableFuture<Void> approveFuture = tronAsyncService.approve(meme_contract);
-//                                    approveFuture.thenRun(() -> {
-//                                        CompletableFuture<Void> swapTokensFuture = tronAsyncService
-//                                        .swapExactETHForTokens(amount, amountOut, meme_contract);
-//                                        swapTokensFuture.join();  // Wait for the swap to complete
-//                                        System.out.println("Swap completed!");
-//                                    });
-
-								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
-								System.out.println(System.currentTimeMillis() - timestamp);
-								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
-									System.out.println("Run bot -- " + trx.getTransactionCapsule().getTransactionId());
-									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 5;
-									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
-									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
-
-									for (int i = 0; i < count1; i++) {
-										tronAsyncService.swapExactETHForTokens(amount, amountOut.add(new BigInteger("1")), toPath1,
-												new_deadline);
-									}
-									for (int i = 0; i < count2; i++) {
-										tronAsyncService.swapExactTokensForETH(BigInteger.valueOf((long)(amount * 0.994 + 1)), amountOut, toPath1, new_deadline);
-									}
-
-									ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
-									scheduler.schedule(() -> {
-										liquidate(toPath1, true);
-										scheduler.shutdown();
-									}, 3, TimeUnit.SECONDS);
-								}
-
-								liquidate(toPath1, false);
-							}).exceptionally(ex -> {
-								System.err.println("Error occurred: " + ex.getMessage());
-								return null;
-							});
-
-						} catch (Exception ignored) {
-						}
+//						try {
+////                                long trx_amount = (long) (Math.random() * 100);
+//							long trx_min = Long.parseLong(envService.get("TRXMINAMOUNT"));
+//							long trx_max = Long.parseLong(envService.get("TRXMAXAMOUNT"));
+//							int count1_min = Integer.parseInt(envService.get("COUNT1MIN"));
+//							int count1_max = Integer.parseInt(envService.get("COUNT1MAX"));
+//							int count2_min = Integer.parseInt(envService.get("COUNT2MIN"));
+//							int count2_max = Integer.parseInt(envService.get("COUNT2MAX"));
+//
+//							double trx_amount = trx_min + Math.random() * (trx_max - trx_min);
+//							long amount = (long) (trx_amount * 1000000L);
+//
+//							if (!envService.get("APPROVED").contains(toPath1)) {
+//								return;
+//							}
+//
+//							CompletableFuture<BigInteger> amountOutFuture = tronAsyncService.getAmountOut(new Uint256(amount),
+//									Arrays.asList(WTRX_Address, toPath1));
+//							amountOutFuture.thenAccept(amountOut -> {
+////                                    System.out.println("Amount out: " + amountOut);
+////                                    CompletableFuture<Void> approveFuture = tronAsyncService.approve(meme_contract);
+////                                    approveFuture.thenRun(() -> {
+////                                        CompletableFuture<Void> swapTokensFuture = tronAsyncService
+////                                        .swapExactETHForTokens(amount, amountOut, meme_contract);
+////                                        swapTokensFuture.join();  // Wait for the swap to complete
+////                                        System.out.println("Swap completed!");
+////                                    });
+//
+//								long timedifflimit = Long.parseLong(envService.get("TIMEDIFFLIMIT"));
+//								System.out.println(System.currentTimeMillis() - timestamp);
+//								if (System.currentTimeMillis() - timestamp > 0 && System.currentTimeMillis() - timestamp < timedifflimit) {
+//									System.out.println("Run bot -- " + trx.getTransactionCapsule().getTransactionId());
+//									long new_deadline = (int) (System.currentTimeMillis() / 1000) + 5;
+//									int count1 = count1_min + (int) (Math.random() * (count1_max - count1_min));
+//									int count2 = count2_min + (int) (Math.random() * (count2_max - count2_min));
+//
+//									for (int i = 0; i < count1; i++) {
+//										tronAsyncService.swapExactETHForTokens(amount, amountOut.add(new BigInteger("1")), toPath1,
+//												new_deadline);
+//									}
+//									for (int i = 0; i < count2; i++) {
+//										tronAsyncService.swapExactTokensForETH(BigInteger.valueOf((long)(amount * 0.994 + 1)), amountOut, toPath1, new_deadline);
+//									}
+//
+//									ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+//
+//									scheduler.schedule(() -> {
+//										liquidate(toPath1, true);
+//										scheduler.shutdown();
+//									}, 3, TimeUnit.SECONDS);
+//								}
+//
+//								liquidate(toPath1, false);
+//							}).exceptionally(ex -> {
+//								System.err.println("Error occurred: " + ex.getMessage());
+//								return null;
+//							});
+//
+//						} catch (Exception ignored) {
+//						}
 //                            System.out.println(getAmountOut(100 * 1000000L, toPath1));
 					}
 				}

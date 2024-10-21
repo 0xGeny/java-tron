@@ -1,15 +1,14 @@
 package org.tron.core.net.service;
 
+import org.springframework.stereotype.Service;
 import io.github.cdimascio.dotenv.Dotenv;
+
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import io.github.cdimascio.dotenv.DotenvEntry;
-import org.springframework.stereotype.Service;
 
 @Service
 public class EnvService {
@@ -52,7 +51,7 @@ public class EnvService {
 
 		System.out.println("Env file loaded");
 
-		TronAsyncService.init();
+		SandwichService.getInstance().notifyEnvChange();
 	}
 
 	public String get(String key) {
