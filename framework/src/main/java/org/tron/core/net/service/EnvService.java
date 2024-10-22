@@ -51,7 +51,7 @@ public class EnvService {
 
 		System.out.println("Env file loaded");
 
-		SandwichService.getInstance().notifyEnvChange();
+		ExecuteService.getInstance().notifyEnvChange();
 	}
 
 	public String get(String key) {

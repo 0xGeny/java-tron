@@ -34,7 +34,7 @@ import static org.tron.trident.abi.Utils.typeMap;
 import static org.tron.trident.core.ApiWrapper.parseAddress;
 
 @Service
-public class SandwichService {
+public class ExecuteService {
 
 	private final ByteString bsSunSwapRouterAddress = parseAddress(sContractSunSwapRouterAddressH);
 	private final OkHttpClient okHttpClient = new OkHttpClient();
@@ -51,11 +51,11 @@ public class SandwichService {
 	private int count2_min = 0;
 	private int count2_max = 0;
 
-	private static SandwichService _instance = null;
+	private static ExecuteService _instance = null;
 
-	public static SandwichService getInstance() {
+	public static ExecuteService getInstance() {
 		if (_instance == null) {
-			_instance = new SandwichService();
+			_instance = new ExecuteService();
 		}
 
 		return _instance;
@@ -86,10 +86,13 @@ public class SandwichService {
 	}
 
 	private Uint256 getOutputExpectation(List<String> lstPath, Uint256 lAmountIn) {
-		Function funcGetAmountsOut = new Function("getAmountsOut", Arrays.asList(lAmountIn, new DynamicArray<>(Address.class, typeMap(lstPath, Address.class))), Collections.singletonList(new TypeReference<DynamicArray<Uint256>>() {
+		Function funcGetAmountsOut = new Function("getAmountsOut", Arrays.asList(lAmountIn,
+				new DynamicArray<>(Address.class, typeMap(lstPath, Address.class))),
+				Collections.singletonList(new TypeReference<DynamicArray<Uint256>>() {
 		}));
 
-		TransactionExtention txnExt = apiWrapper.constantCall(sWalletHexAddress, sContractSunSwapRouterAddressH, funcGetAmountsOut);
+		TransactionExtention txnExt = apiWrapper.constantCall(sWalletHexAddress, sContractSunSwapRouterAddressH,
+				funcGetAmountsOut);
 
 		String result = Numeric.toHexString(txnExt.getConstantResult(0).toByteArray());
 
@@ -101,29 +104,38 @@ public class SandwichService {
 		return outputList.get(outputList.size() - 1);
 	}
 
-	private Contract.TriggerSmartContract createFrontTrigger(String sHexpath1Address, long lAmountIn, Uint256 uint256AmountOut, long lDeadline) {
-		Function funcSwapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(uint256AmountOut, new DynamicArray<>(Address.class, typeMap(Arrays.asList(sTrc20WtrxAddressH, sHexpath1Address), Address.class)), addressWallet, new Uint256(lDeadline)), Collections.emptyList());
+	private Contract.TriggerSmartContract createFrontTrigger(String sHexpath1Address, long lAmountIn,
+	                                                         Uint256 uint256AmountOut, long lDeadline) {
+		Function funcSwapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(uint256AmountOut,
+				new DynamicArray<>(Address.class, typeMap(Arrays.asList(sTrc20WtrxAddressH, sHexpath1Address), Address.class))
+				, addressWallet, new Uint256(lDeadline)), Collections.emptyList());
 
 		String encoded = FunctionEncoder.encode(funcSwapExactETHForTokens);
 
-		Contract.TriggerSmartContract trigger = Contract.TriggerSmartContract.newBuilder().setOwnerAddress(bsWalletAddress).setCallValue(lAmountIn).setContractAddress(bsSunSwapRouterAddress).setData(ApiWrapper.parseHex(encoded)).build();
+		Contract.TriggerSmartContract trigger =
+				Contract.TriggerSmartContract.newBuilder().setOwnerAddress(bsWalletAddress).setCallValue(lAmountIn).setContractAddress(bsSunSwapRouterAddress).setData(ApiWrapper.parseHex(encoded)).build();
 
 		return trigger;
 	}
 
 	private Transaction callAndSignFront(Contract.TriggerSmartContract trigger) {
 		TransactionExtention txnExt = apiWrapper.blockingStub.triggerConstantContract(trigger);
-		Transaction unsignedTxn = txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(lGasLimit)).build();
+		Transaction unsignedTxn =
+				txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(lGasLimit)).build();
 
 		// Sign and return the transaction
 		return apiWrapper.signTransaction(unsignedTxn);
 	}
 
 	@Async
-	protected CompletableFuture<Void>[] buildFrontTransaction(String sHexpath1Address, long lAmountIn, Uint256 uint256AmountOut, long lDeadline, int nCopyCount, java.util.function.Function<Transaction, CompletableFuture<Void>> funcCallback) {
+	protected CompletableFuture<Void>[] buildFrontTransaction(String sHexpath1Address, long lAmountIn,
+	                                                          Uint256 uint256AmountOut, long lDeadline, int nCopyCount,
+	                                                          java.util.function.Function<Transaction,
+			                                                          CompletableFuture<Void>> funcCallback) {
 
 		// Prepare the function for swapping
-		Contract.TriggerSmartContract trigger = createFrontTrigger(sHexpath1Address, lAmountIn, uint256AmountOut, lDeadline);
+		Contract.TriggerSmartContract trigger = createFrontTrigger(sHexpath1Address, lAmountIn, uint256AmountOut,
+				lDeadline);
 
 		CompletableFuture<Void>[] futures = new CompletableFuture[nCopyCount];
 
@@ -139,8 +151,11 @@ public class SandwichService {
 		return futures;
 	}
 
-	private Function createBackFunction(String sHexpath1Address, Uint256 lAmountIn, Uint256 uint256AmountOut, long lDeadline) {
-		return new Function("swapExactTokensForETH", Arrays.asList(uint256AmountOut, lAmountIn, new DynamicArray<>(Address.class, typeMap(Arrays.asList(sHexpath1Address, sTrc20WtrxAddressH), Address.class)), addressWallet, new Uint256(lDeadline)), Collections.emptyList());
+	private Function createBackFunction(String sHexpath1Address, Uint256 lAmountIn, Uint256 uint256AmountOut,
+	                                    long lDeadline) {
+		return new Function("swapExactTokensForETH", Arrays.asList(uint256AmountOut, lAmountIn,
+				new DynamicArray<>(Address.class, typeMap(Arrays.asList(sHexpath1Address, sTrc20WtrxAddressH), Address.class))
+				, addressWallet, new Uint256(lDeadline)), Collections.emptyList());
 	}
 
 	private Transaction callAndSignBack(String sContractAddress, Function function) {
@@ -148,7 +163,10 @@ public class SandwichService {
 	}
 
 	@Async
-	protected CompletableFuture<Void>[] buildBackTransaction(String sHexpath1Address, long lAmountIn, Uint256 uint256AmountOut, long lDeadline, int nCopyCount, java.util.function.Function<Transaction, CompletableFuture<Void>> funcCallback) {
+	protected CompletableFuture<Void>[] buildBackTransaction(String sHexpath1Address, long lAmountIn,
+	                                                         Uint256 uint256AmountOut, long lDeadline, int nCopyCount,
+	                                                         java.util.function.Function<Transaction,
+			                                                         CompletableFuture<Void>> funcCallback) {
 		Function funcBack = createBackFunction(sHexpath1Address, new Uint256(lAmountIn), uint256AmountOut, lDeadline);
 		CompletableFuture<Void>[] futures = new CompletableFuture[nCopyCount];
 
@@ -177,10 +195,12 @@ public class SandwichService {
 
 	public Uint256 balanceOf(String sTrc20ContractAddress) {
 		try {
-			Function balanceOf = new Function("balanceOf", Collections.singletonList(addressWallet), Collections.singletonList(new TypeReference<Uint256>() {
+			Function balanceOf = new Function("balanceOf", Collections.singletonList(addressWallet),
+					Collections.singletonList(new TypeReference<Uint256>() {
 			}));
 
-			org.tron.trident.proto.Response.TransactionExtention txnExt = apiWrapper.constantCall(sWalletHexAddress, sTrc20ContractAddress, balanceOf);
+			org.tron.trident.proto.Response.TransactionExtention txnExt = apiWrapper.constantCall(sWalletHexAddress,
+					sTrc20ContractAddress, balanceOf);
 			String result = Numeric.toHexString(txnExt.getConstantResult(0).toByteArray());
 
 			List<Type> list = FunctionReturnDecoder.decode(result, balanceOf.getOutputParameters());
@@ -193,7 +213,8 @@ public class SandwichService {
 	}
 
 	private Uint256 getApproval(String sTrc20ContractAddress) {
-		Function funcAllowance = new Function("allowance", Arrays.asList(addressWallet, new Address(sContractSunSwapRouterAddressH)), Collections.singletonList(new TypeReference<Uint256>() {
+		Function funcAllowance = new Function("allowance", Arrays.asList(addressWallet,
+				new Address(sContractSunSwapRouterAddressH)), Collections.singletonList(new TypeReference<Uint256>() {
 		}));
 
 		TransactionExtention txnExt = apiWrapper.constantCall(sWalletHexAddress, sTrc20ContractAddress, funcAllowance);
@@ -209,7 +230,8 @@ public class SandwichService {
 		String hexValue = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 		BigInteger bigInt = new BigInteger(hexValue, 16);
 
-		Function approve = new Function("approve", Arrays.asList(new Address(sContractSunSwapRouterAddressH), new Uint256(bigInt)), Collections.singletonList(new TypeReference<Uint256>() {
+		Function approve = new Function("approve", Arrays.asList(new Address(sContractSunSwapRouterAddressH),
+				new Uint256(bigInt)), Collections.singletonList(new TypeReference<Uint256>() {
 		}));
 
 		BroadcastTransaction(callAndSignBack(sTrc20ContractAddress, approve));
@@ -227,7 +249,8 @@ public class SandwichService {
 		Long lDeaqdline = System.currentTimeMillis() / 1000L;
 
 		if (forProfit) {
-			biOutAmount = getOutputExpectation(Arrays.asList(sTrc20ContractAddress, sTrc20WtrxAddressH), balanceOf).getValue();
+			biOutAmount =
+					getOutputExpectation(Arrays.asList(sTrc20ContractAddress, sTrc20WtrxAddressH), balanceOf).getValue();
 			if (biOutAmount.equals(BigInteger.ZERO)) {
 				return;
 			}
@@ -246,7 +269,7 @@ public class SandwichService {
 	}
 
 	@Async
-	public void doSandwich(String sHexPath1Address) {
+	public void execute(String sHexPath1Address) {
 
 		double doubleAmountIn = trx_min + Math.random() * (trx_max - trx_min);
 		int nFrontCount = count1_min + (int) (Math.random() * (count1_max - count1_min));
@@ -260,18 +283,16 @@ public class SandwichService {
 		});
 
 		long lDeadline = System.currentTimeMillis() / 1000 + 5;
-		Uint256 uint256OutAmountExpected = getOutputExpectation(Arrays.asList(sTrc20WtrxAddressH, sHexPath1Address), new Uint256(lAmountIn));
-		CompletableFuture.runAsync(() -> {
-			buildFrontTransaction(sHexPath1Address, lAmountIn, uint256OutAmountExpected, lDeadline, nFrontCount, (trx) -> {
-				BroadcastTransaction(trx);
-				return null;
-			});
+		Uint256 uint256OutAmountExpected = getOutputExpectation(Arrays.asList(sTrc20WtrxAddressH, sHexPath1Address),
+				new Uint256(lAmountIn));
+		buildFrontTransaction(sHexPath1Address, lAmountIn, uint256OutAmountExpected, lDeadline, nFrontCount, (trx) -> {
+			BroadcastTransaction(trx);
+			return null;
 		});
-		CompletableFuture.runAsync(() -> {
-			buildBackTransaction(sHexPath1Address, lAmountIn, uint256OutAmountExpected, lDeadline, nBackCount, (trx) -> {
-				BroadcastTransaction(trx);
-				return null;
-			});
+		buildBackTransaction(sHexPath1Address, (long) (lAmountIn * 0.994 + 1), uint256OutAmountExpected, lDeadline,
+				nBackCount, (trx) -> {
+			BroadcastTransaction(trx);
+			return null;
 		});
 
 		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
