@@ -245,7 +245,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						if (amountIn < Long.parseLong(envService.get("AMOUNTINLIMIT")) * lOneTrx * 100) return;
+						if (amountIn < Long.parseLong(envService.get("AMOUNTINLIMIT")) * lOneTrx) return;
 
 						String toAddress = encode58Check(convertToTronAddress(bytesToAddress));
 						String toPath0 = encode58Check(convertToTronAddress(bytesPath0));
