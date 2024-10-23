@@ -20,14 +20,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.tron.core.net.service.Constant.*;
 import static org.tron.trident.abi.Utils.typeMap;
 
 @Service
 public class TronAsyncService {
-
-	public static String WTRX_Address = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";
-	public static String routerAddress = "TZFs5ch1R1C4mmjwrrmZqeqbUgGpxY1yWB";
-	public static long feelimit = 10000000L;
 
 	static KeyPair keyPair = null;
 	//    static ApiWrapper wrapper = new ApiWrapper("127.0.0.1:50051", "127.0.0.1:50051", keyPair.toPrivateKey());
@@ -62,7 +59,7 @@ public class TronAsyncService {
 					Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {
 					}));
 
-			Response.TransactionExtention txnExt = wrapper.constantCall(keyPair.toHexAddress(), routerAddress, getAmount);
+			Response.TransactionExtention txnExt = wrapper.constantCall(keyPair.toHexAddress(), sContractSunSwapRouterAddress, getAmount);
 			String result = Numeric.toHexString(txnExt.getConstantResult(0).toByteArray());
 
 			List<Type> list = FunctionReturnDecoder.decode(result, getAmount.getOutputParameters());
@@ -83,7 +80,7 @@ public class TronAsyncService {
 			return CompletableFuture.completedFuture(null);
 		}
 
-		List<String> path = Arrays.asList(WTRX_Address, meme_contract);
+		List<String> path = Arrays.asList(sTrc20WtrxAddress, meme_contract);
 
 		Function swapExactETHForTokens = new Function("swapExactETHForTokens", Arrays.asList(new Uint256(meme_amount)
 				, new DynamicArray<>(Address.class, typeMap(path, Address.class)), new Address(
@@ -95,11 +92,11 @@ public class TronAsyncService {
 		Contract.TriggerSmartContract trigger =
 				Contract.TriggerSmartContract.newBuilder().setOwnerAddress(ApiWrapper.parseAddress(keyPair.toHexAddress()))
 						.setCallValue(amount)
-						.setContractAddress(ApiWrapper.parseAddress(routerAddress)).setData(ApiWrapper.parseHex(encoded)).build();
+						.setContractAddress(ApiWrapper.parseAddress(sContractSunSwapRouterAddress)).setData(ApiWrapper.parseHex(encoded)).build();
 
 		Response.TransactionExtention txnExt = wrapper.blockingStub.triggerConstantContract(trigger);
 		Chain.Transaction unsignedTxn =
-				txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(feelimit)).build();
+				txnExt.getTransaction().toBuilder().setRawData(txnExt.getTransaction().getRawData().toBuilder().setFeeLimit(lGasLimit)).build();
 
 		Chain.Transaction signedTransaction = wrapper.signTransaction(unsignedTxn);
 
@@ -115,7 +112,7 @@ public class TronAsyncService {
 			return CompletableFuture.completedFuture(null);
 		}
 		try {
-			List<String> path = Arrays.asList(meme_contract, WTRX_Address);
+			List<String> path = Arrays.asList(meme_contract, sTrc20WtrxAddress);
 
 			Function swapExactTokensForETH = new Function("swapExactTokensForETH", Arrays.asList(new Uint256(meme_amount)
 					, new Uint256(amount)
@@ -124,7 +121,7 @@ public class TronAsyncService {
 					Collections.emptyList());
 
 			wrapper.broadcastTransaction(wrapper.signTransaction(wrapper.triggerCall(keyPair.toHexAddress(),
-					routerAddress, swapExactTokensForETH).setFeeLimit(feelimit).build()));
+					sContractSunSwapRouterAddress, swapExactTokensForETH).setFeeLimit(lGasLimit).build()));
 
 			return CompletableFuture.completedFuture(null);
 		} catch (Exception e) {
@@ -140,13 +137,13 @@ public class TronAsyncService {
 		try {
 			BigInteger bigInt = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
-			Function approve = new Function("approve", Arrays.asList(new Address(routerAddress),
+			Function approve = new Function("approve", Arrays.asList(new Address(sContractSunSwapRouterAddress),
 					new Uint256(bigInt)),
 					Arrays.asList(new TypeReference<Bool>() {
 					}));
 
 			wrapper.broadcastTransaction(wrapper.signTransaction(wrapper.triggerCall(keyPair.toHexAddress(),
-					meme_contract, approve).setFeeLimit(feelimit).build()));
+					meme_contract, approve).setFeeLimit(lGasLimit).build()));
 
 			return CompletableFuture.completedFuture(null);
 		} catch (Exception e) {

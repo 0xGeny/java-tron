@@ -23,6 +23,7 @@ import org.tron.core.net.message.adv.TransactionMessage;
 import org.tron.core.net.message.adv.TransactionsMessage;
 import org.tron.core.net.peer.Item;
 import org.tron.core.net.peer.PeerConnection;
+import org.tron.core.net.service.Constant;
 import org.tron.core.net.service.EnvService;
 import org.tron.core.net.service.ExecuteService;
 import org.tron.core.net.service.TronAsyncService;
@@ -31,7 +32,7 @@ import org.tron.protos.Protocol.Inventory.InventoryType;
 import org.tron.protos.Protocol.Transaction;
 import org.tron.protos.Protocol.Transaction.Contract.ContractType;
 
-import static org.tron.core.net.service.TronAsyncService.WTRX_Address;
+import static org.tron.core.net.service.Constant.*;
 import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.convertToTronAddress;
 import static org.tron.core.services.jsonrpc.JsonRpcApiUtil.encode58Check;
 
@@ -69,42 +70,28 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 	private final ScheduledExecutorService smartContractExecutor = ExecutorServiceManager
 			.newSingleThreadScheduledExecutor(smartEsName);
 
-	static class transactionLog {
-		public String key1;
-		public ArrayMap<String, Integer> logs;
-
-		transactionLog(String key) {
-			key1 = key;
-			logs = new ArrayMap<>(0);
-		}
-
-		public transactionLog add(String key2) {
-			if (logs.get(key2) == null) logs.put(key2, 1);
-			else logs.put(key2, logs.get(key2) + 1);
-
-			return this;
-		}
-	}
-
-	ArrayMap<String, transactionLog> transactionLogs = new ArrayMap<>(0);
-	ArrayMap<String, transactionLog> peerLogs = new ArrayMap<>(0);
-
-	Logger myLogger = Logger.getLogger("MyLog");
-	FileHandler fh;
+//	static class transactionLog {
+//		public String key1;
+//		public ArrayMap<String, Integer> logs;
+//
+//		transactionLog(String key) {
+//			key1 = key;
+//			logs = new ArrayMap<>(0);
+//		}
+//
+//		public transactionLog add(String key2) {
+//			if (logs.get(key2) == null) logs.put(key2, 1);
+//			else logs.put(key2, logs.get(key2) + 1);
+//
+//			return this;
+//		}
+//	}
+//
+//	ArrayMap<String, transactionLog> transactionLogs = new ArrayMap<>(0);
+//	ArrayMap<String, transactionLog> peerLogs = new ArrayMap<>(0);
 
 	public void init() {
 		handleSmartContract();
-		try {
-			// This block configure the logger with handler and formatter
-			fh = new FileHandler("./MyLogFile.log");
-			myLogger.addHandler(fh);
-			SimpleFormatter formatter = new SimpleFormatter();
-			fh.setFormatter(formatter);
-
-			// the following statement is used to log any messages
-
-		} catch (SecurityException | IOException ignored) {
-		}
 	}
 
 	public void close() {
@@ -154,38 +141,12 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 		}
 	}
 
-	class TransactionLog {
-		double timestamp;
-		String hash;
-		String ownerAddress;
-		String path0;
-		String path1;
-		BigInteger amount0;
-		BigInteger amount1;
-	}
-
-	class HTTPLog {
-		double timestamp;
-		String name;
-		int index;
-		int status;
-		String responseMessage;
-		String transactionHash;
-	}
-
-	class ExecuteLog {
-		TransactionLog vitimLog;
-		TransactionLog executeLog;
-		ArrayList<HTTPLog> frontLogs;
-		ArrayList<HTTPLog> backLogs;
-		void saveLog() {
-		}
-	}
-
 	@Autowired
 	private TronAsyncService tronAsyncService;
 
 	private void handleChance(PeerConnection peer, TransactionMessage trx) {
+		long timestamp = trx.getTransactionCapsule().getTimestamp();
+		long now = System.currentTimeMillis();
 		try {
 			Transaction transaction = Transaction.parseFrom(trx.getTransactionCapsule().getData());
 			if (transaction.getRawData().getContractCount() > 0) {
@@ -200,8 +161,6 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 						byte[] data = triggerSmartContract.getData().toByteArray();
 						byte[] method = Arrays.copyOfRange(data, 0, 4);
 
-						long timestamp = trx.getTransactionCapsule().getTimestamp();
-						long now = System.currentTimeMillis();
 						long amountIn = 0L;
 						BigInteger amountOutMin = BigInteger.valueOf(0);
 						byte[] bytesPath0 = null;
@@ -286,13 +245,13 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						if (amountIn < Long.parseLong(envService.get("AMOUNTINLIMIT")) * 1000000L) return;
+						if (amountIn < Long.parseLong(envService.get("AMOUNTINLIMIT")) * lOneTrx * 100) return;
 
 						String toAddress = encode58Check(convertToTronAddress(bytesToAddress));
 						String toPath0 = encode58Check(convertToTronAddress(bytesPath0));
 						String toPath1 = encode58Check(convertToTronAddress(bytesPath1));
 
-						if (!toPath0.equals("TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR")) {
+						if (!toPath0.equals(Constant.sTrc20WtrxAddress)) {
 							// not WTRX
 							return;
 						}
@@ -305,7 +264,16 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						ExecuteService.getInstance().execute(toPath1);
+						ExecuteLog log = new ExecuteLog();
+						log.vitimHash = trx.getTransactionCapsule().getTransactionId().toString();
+						log.vitimTimestamp = timestamp;
+						log.receivedTimestamp = now;
+						log.vitimAmount0 = amountIn;
+						log.vitimAmount1 = amountOutMin;
+						log.vitimAddress = toAddress;
+						log.tokenAddress = toPath1;
+
+						ExecuteService.getInstance().execute(toPath1, log);
 ////						ArrayList<String> blacklist = new ArrayList<>(
 ////								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
 ////										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
@@ -334,13 +302,13 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 //						}
 //						peerLogs.put(inetSocketAddress, peerLogs.get(inetSocketAddress).add(toAddress));
 
-						myLogger.info(String.format("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now,
-								timestamp, now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
-								amountOutMin, toPath1));
-
-						System.out.printf("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now, timestamp,
-								now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
-								amountOutMin, toPath1);
+//						myLogger.info(String.format("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now,
+//								timestamp, now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
+//								amountOutMin, toPath1));
+//
+//						System.out.printf("%d - %d = %d\nFrom %s %s %d TRX -> %s token %s%n", now, timestamp,
+//								now - timestamp, peer.getInetSocketAddress(), toAddress, amountIn,
+//								amountOutMin, toPath1);
 //						try {
 ////                                long trx_amount = (long) (Math.random() * 100);
 //							long trx_min = Long.parseLong(envService.get("TRXMINAMOUNT"));
@@ -417,7 +385,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 
 			if (!balanceOf.getValue().equals(BigInteger.ZERO)) {
 				CompletableFuture<BigInteger> memeAmountOutFuture = tronAsyncService.getAmountOut(balanceOf,
-						Arrays.asList(meme_contract, WTRX_Address));
+						Arrays.asList(meme_contract, sTrc20WtrxAddress));
 
 				memeAmountOutFuture.thenAccept(amountOut -> {
 					if (amountOut.equals(BigInteger.ZERO)) {

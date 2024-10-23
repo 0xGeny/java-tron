@@ -1,10 +1,13 @@
 package org.tron.core.net.service;
 
+import org.eclipse.osgi.framework.util.ArrayMap;
 import org.springframework.stereotype.Service;
 import io.github.cdimascio.dotenv.Dotenv;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -15,6 +18,7 @@ public class EnvService {
 
 	private Map<String, String> envVariables = new HashMap<>();
 	private Dotenv dotenv;
+	private Dotenv keyenv;
 
 	private static EnvService _instance = null;
 
@@ -42,12 +46,36 @@ public class EnvService {
 		return _instance;
 	}
 
-	public void read() {
-		dotenv = Dotenv.load();
+	private void loadKey() {
+		keyenv = Dotenv.configure().filename(".key").load();
 
-		dotenv.entries().forEach((entry) -> {
+		keyenv.entries().forEach((entry) -> {
 			envVariables.put(entry.getKey(), entry.getValue());
 		});
+	}
+
+	private void loadEnv() {
+		dotenv = Dotenv.load();
+
+		ExecuteService.getInstance().clearApiList();
+
+		dotenv.entries().forEach((entry) -> {
+			String key = entry.getKey();
+			String value = entry.getValue();
+
+			if (key.startsWith("API_") && value.startsWith("http")) {
+				String apiName = key.replaceFirst("API_", "");
+				ExecuteService.getInstance().updateApi(apiName, value.split(","));
+			} else {
+				envVariables.put(key, value);
+			}
+		});
+	}
+
+	public void read() {
+
+		loadKey();
+		loadEnv();
 
 		System.out.println("Env file loaded");
 
@@ -74,7 +102,13 @@ public class EnvService {
 					for (WatchEvent<?> event : key.pollEvents()) {
 						if (event.context().toString().equals(envFileName)) {
 							System.out.println(".env file changed, reloading...");
-							read();
+							loadEnv();
+							ExecuteService.getInstance().notifyEnvChange();
+						}
+						if (event.context().toString().equals(".key")) {
+							System.out.println(".key file changed, reloading...");
+							loadKey();
+							ExecuteService.getInstance().notifyEnvChange();
 						}
 					}
 					key.reset();
