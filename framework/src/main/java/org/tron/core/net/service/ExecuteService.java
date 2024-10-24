@@ -40,11 +40,9 @@ import static org.tron.trident.core.ApiWrapper.parseAddress;
 public class ExecuteService {
 
 	private final ByteString bsSunSwapRouterAddress = parseAddress(Constant.sContractSunSwapRouterAddress);
-	private final OkHttpClient okHttpClient = new OkHttpClient();
 	private String PK = null;
 	private ApiWrapper apiWrapper = null;
-	public String sWalletAddressT = null;
-	private String sWalletHexAddress = null;
+	public String sWalletHexAddress = null;
 	private ByteString bsWalletAddress = null;
 	private Address addressWallet = null;
 	private long trx_min = 0;
@@ -75,8 +73,7 @@ public class ExecuteService {
 
 			PK = newPK;
 			apiWrapper = new ApiWrapper(sUrlGrpcEndpoint, sUrlGrpcSolidityEndpoint, PK);
-			sWalletAddressT = apiWrapper.keyPair.toBase58CheckAddress();
-			sWalletHexAddress = apiWrapper.keyPair.toHexAddress();
+			sWalletHexAddress = apiWrapper.keyPair.toBase58CheckAddress();
 			bsWalletAddress = parseAddress(sWalletHexAddress);
 			addressWallet = new Address(sWalletHexAddress);
 		}
@@ -141,9 +138,7 @@ public class ExecuteService {
 
 	@Async
 	protected CompletableFuture<Void>[] buildFrontTransaction(String sHexpath1Address, long lAmountIn,
-	                                                          Uint256 uint256AmountOut, long lDeadline, int nCopyCount,
-	                                                          java.util.function.Function<TransactionExtension,
-			                                                          CompletableFuture<Void>> funcCallback) {
+	                                                          Uint256 uint256AmountOut, long lDeadline, int nCopyCount) {
 
 		// Prepare the function for swapping
 		Contract.TriggerSmartContract trigger = createFrontTrigger(sHexpath1Address, lAmountIn, uint256AmountOut,
@@ -156,7 +151,11 @@ public class ExecuteService {
 			Transaction trx = callAndSignFront(trigger);
 			int finalI = i;
 			futures[i] = CompletableFuture.runAsync(() -> {
-				funcCallback.apply(new TransactionExtension(trx, TransanctionType.FRONT, finalI));
+				TransactionExtension trxExt = new TransactionExtension(trx, TransanctionType.FRONT, finalI);
+				if (finalI == 0) {
+					BroadcastWithHttpBulk(trxExt);
+				}
+				BroadcastWithGrpc(trxExt);
 			});
 		}
 
@@ -177,9 +176,7 @@ public class ExecuteService {
 
 	@Async
 	protected CompletableFuture<Void>[] buildBackTransaction(String sHexpath1Address, long lAmountIn,
-	                                                         Uint256 uint256AmountOut, long lDeadline, int nCopyCount,
-	                                                         java.util.function.Function<TransactionExtension,
-			                                                         CompletableFuture<Void>> funcCallback) {
+	                                                         Uint256 uint256AmountOut, long lDeadline, int nCopyCount) {
 		Function funcBack = createBackFunction(sHexpath1Address, new Uint256(lAmountIn), uint256AmountOut, lDeadline);
 		CompletableFuture<Void>[] futures = new CompletableFuture[nCopyCount];
 
@@ -188,7 +185,7 @@ public class ExecuteService {
 			Transaction trx = callAndSignBack(Constant.sContractSunSwapRouterAddress, funcBack);
 			int finalI = i;
 			futures[i] = CompletableFuture.runAsync(() -> {
-				funcCallback.apply(new TransactionExtension(trx, TransanctionType.BACK, finalI));
+				BroadcastWithGrpc(new TransactionExtension(trx, TransanctionType.BACK, finalI));
 			});
 		}
 
@@ -197,22 +194,20 @@ public class ExecuteService {
 	}
 
 	@Async
-	protected CompletableFuture<Void> BroadcastWithGrpc(TransactionExtension txExt) {
-		return CompletableFuture.runAsync(() -> {
-			double timestamp0 = System.currentTimeMillis();
-			double timestamp1;
-			boolean status = false;
-			try {
-				apiWrapper.broadcastTransaction(txExt.transaction);  // Broadcast the transaction
-				timestamp1 = System.currentTimeMillis();
-				status = true;
-			} catch (RuntimeException e) {
-				timestamp1 = System.currentTimeMillis();
-				System.out.println(e.getMessage());
-			}
-			String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " GRPC " + timestamp0 + " - " + timestamp1 + " = " + (timestamp1 - timestamp0) + "\n";
-			MyLogger.print(output);
-		});
+	protected void BroadcastWithGrpc(TransactionExtension txExt) {
+		double timestamp0 = System.currentTimeMillis();
+		double timestamp1;
+		boolean status = false;
+		try {
+			System.out.print(apiWrapper.broadcastTransaction(txExt.transaction));  // Broadcast the transaction
+			timestamp1 = System.currentTimeMillis();
+			status = true;
+		} catch (RuntimeException e) {
+			timestamp1 = System.currentTimeMillis();
+			System.out.println(e.getMessage());
+		}
+		String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " GRPC " + timestamp0 + " - " + timestamp1 + " = " + (timestamp1 - timestamp0) + "\n";
+		MyLogger.print(output);
 	}
 
 	public Uint256 balanceOf(String sTrc20ContractAddress) {
@@ -300,11 +295,11 @@ public class ExecuteService {
 		int nBackCount = count2_min + (int) (Math.random() * (count2_max - count2_min));
 		long lAmountIn = (long) (doubleAmountIn * lOneTrx);
 
-		CompletableFuture.runAsync(() -> {
-			if (getApproval(sHexPath1Address).equals(Uint256.DEFAULT)) {
-				approve(sHexPath1Address);
-			}
-		});
+//		CompletableFuture.runAsync(() -> {
+//			if (getApproval(sHexPath1Address).equals(Uint256.DEFAULT)) {
+//				approve(sHexPath1Address);
+//			}
+//		});
 
 		long lDeadline = System.currentTimeMillis() / 1000 + 5;
 		Uint256 uint256OutAmountExpected = getOutputExpectation(Arrays.asList(sTrc20WtrxAddress, sHexPath1Address),
@@ -313,17 +308,12 @@ public class ExecuteService {
 		executeLog.reactTimestamp = System.currentTimeMillis();
 		executeLog.reactAmount0 = lAmountIn;
 		executeLog.reactAmount1 = uint256OutAmountExpected.getValue();
+		executeLog.print();
 
-		buildFrontTransaction(sHexPath1Address, lAmountIn, uint256OutAmountExpected, lDeadline, nFrontCount, (txExt) -> {
-			BroadcastTransaction(txExt);
-			return null;
-		});
+		buildFrontTransaction(sHexPath1Address, lAmountIn, uint256OutAmountExpected, lDeadline, nFrontCount);
 
 		buildBackTransaction(sHexPath1Address, (long) (lAmountIn * 0.994 + 1), uint256OutAmountExpected, lDeadline,
-				nBackCount, (txExt) -> {
-					BroadcastTransaction(txExt);
-					return null;
-				});
+				nBackCount);
 
 		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		scheduler.schedule(() -> {
@@ -334,18 +324,20 @@ public class ExecuteService {
 
 	@Async
 	public CompletableFuture<ResponseBody> httpBroadcast(Request request) {
-		CompletableFuture<ResponseBody> future = new CompletableFuture<ResponseBody>();
+		CompletableFuture<ResponseBody> future = new CompletableFuture<>();
+		OkHttpClient okHttpClient = new OkHttpClient();
 		okHttpClient.newCall(request).enqueue(new Callback() {
 			@Override
 			public void onFailure(Call call, IOException e) {
-				System.out.println(request.url() + "\n" + e.getMessage());
+//				System.out.println(request.url() + "\n" + e.getMessage());
+//				System.out.print(request.url());
 				future.completeExceptionally(e);  // Complete the future exceptionally in case of failure
 			}
 
 			@Override
 			public void onResponse(Call call, Response response) throws IOException {
 				ResponseBody responseBody = response.body();
-				System.out.print(request.url() + "\n" + "success");
+//				System.out.print(request.url() + "\n" + "success");
 				response.close();
 				future.complete(responseBody);  // Complete the future successfully with the response
 			}
@@ -358,17 +350,18 @@ public class ExecuteService {
 	public CompletableFuture<Void> BroadcastWithHttpBulk(TransactionExtension txExt) {
 		String sHexRaw = Numeric.toHexString(txExt.transaction.toByteArray());
 
-		MediaType mediaType = MediaType.parse("application/json");
-		RequestBody body = RequestBody.create(mediaType, String.format("{\"transaction\":\"%s\"}", sHexRaw));
-		Request.Builder builderTemplate = new Request.Builder();
-		builderTemplate.method("POST", body);
-		builderTemplate.addHeader("Content-Type", "application/json");
-		builderTemplate.addHeader("Accept", "application/json");
-
 		ArrayList<CompletableFuture<ResponseBody>> futures = new ArrayList<>();
 
+		MediaType mediaType = MediaType.parse("application/json");
+		RequestBody body = RequestBody.create(mediaType, String.format("{\"transaction\":\"%s\"}", sHexRaw));
+
 		sUrls.forEach((String key, String[] value) -> {
-			Request.Builder builder = builderTemplate;
+
+			Request.Builder builder = new Request.Builder();
+			builder.method("POST", body);
+			builder.addHeader("Content-Type", "application/json");
+			builder.addHeader("Accept", "application/json");
+
 			builder.url(value[0] + "/wallet/broadcasthex");
 			for (int j = 1; j < value.length; j += 2) {
 				builder.addHeader(value[j], value[j + 1]);
@@ -392,11 +385,11 @@ public class ExecuteService {
 
 	@Async
 	protected CompletableFuture<Void> BroadcastTransaction(TransactionExtension transaction) {
-		CompletableFuture<Void> grpcFuture = BroadcastWithGrpc(transaction);
+		BroadcastWithGrpc(transaction);
 		CompletableFuture<Void> httpBulkFuture = BroadcastWithHttpBulk(transaction);
 
+		return httpBulkFuture;
 //		return httpBulkFuture;
-		return CompletableFuture.allOf(grpcFuture, httpBulkFuture);
 //    return CompletableFuture.completedFuture(null);
 	}
 }

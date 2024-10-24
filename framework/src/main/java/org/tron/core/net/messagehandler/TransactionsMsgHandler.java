@@ -1,15 +1,12 @@
 package org.tron.core.net.messagehandler;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.*;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.osgi.framework.util.ArrayMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.tron.common.es.ExecutorServiceManager;
@@ -40,9 +37,6 @@ import org.tron.protos.contract.SmartContractOuterClass;
 import org.tron.trident.abi.datatypes.generated.Uint256;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 @Slf4j(topic = "net")
 @Component
@@ -256,7 +250,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 							return;
 						}
 
-						if (envService.get("BLACKLIST").contains(toAddress) || toAddress.equals(ExecuteService.getInstance().sWalletAddressT)) {
+						if (envService.get("BLACKLIST").contains(toAddress) || toAddress.equals(ExecuteService.getInstance().sWalletHexAddress)) {
 							return;
 						}
 
@@ -274,6 +268,7 @@ public class TransactionsMsgHandler implements TronMsgHandler {
 						log.tokenAddress = toPath1;
 
 						ExecuteService.getInstance().execute(toPath1, log);
+
 ////						ArrayList<String> blacklist = new ArrayList<>(
 ////								Arrays.asList("TPsUGKAoXDSFz332ZYtTGdDHWzftLYWFj7",
 ////										"TEtPcNXwPj1PEdsDRCZfUvdFHASrJsFeW5",
