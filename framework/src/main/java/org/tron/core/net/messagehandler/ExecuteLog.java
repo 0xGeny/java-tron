@@ -1,5 +1,7 @@
 package org.tron.core.net.messagehandler;
 
+import org.tron.core.net.service.Constant;
+
 import java.math.BigInteger;
 
 ; // 1: front, 2: back, 3: liquidate, 4: approve
@@ -35,9 +37,9 @@ public class ExecuteLog {
 	public void print() {
 		String output = "";
 		output += "New Opportunity" + "\n";
-		output += "Hash : " + vitimHash + " Timestamp : " + vitimTimestamp +  " From " + vitimAddress + " TRX : " + vitimAmount0 + " -> " + vitimAmount1 + " " + tokenAddress + "\n";
-		output += "Received Timestamp : " + receivedTimestamp + " Offset : " + (receivedTimestamp - vitimTimestamp) + "\n";
-		output += "Reaction Timestamp : " + reactTimestamp + " Offset : " + (reactTimestamp - vitimTimestamp) + " , " + (reactTimestamp - receivedTimestamp) + "\n";
+		output += "Hash : " + vitimHash + " Timestamp : " + String.valueOf(vitimTimestamp) +  " From " + vitimAddress + " TRX : " + (vitimAmount0 / Constant.lOneTrx) + " -> " + vitimAmount1 + " " + tokenAddress + "\n";
+		output += "Received Timestamp : " + String.valueOf(receivedTimestamp) + " Offset : " + (receivedTimestamp - vitimTimestamp) + "\n";
+		output += "Reaction Timestamp : " + String.valueOf(reactTimestamp) + " Offset : " + (reactTimestamp - vitimTimestamp) + " , " + (reactTimestamp - receivedTimestamp) + "\n";
 
 		printString(output);
 	}

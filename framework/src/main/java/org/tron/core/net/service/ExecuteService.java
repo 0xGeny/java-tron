@@ -206,7 +206,7 @@ public class ExecuteService {
 			timestamp1 = System.currentTimeMillis();
 			System.out.println(e.getMessage());
 		}
-		String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " GRPC " + timestamp0 + " - " + timestamp1 + " = " + (timestamp1 - timestamp0) + "\n";
+		String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " GRPC " + String.valueOf(timestamp0) + " - " + String.valueOf(timestamp1) + " = " + (timestamp1 - timestamp0) + "\n";
 		MyLogger.print(output);
 	}
 
@@ -372,7 +372,7 @@ public class ExecuteService {
 			future.thenAccept(response -> {
 				double timestamp1 = System.currentTimeMillis();
 				boolean status = !future.isCompletedExceptionally();
-				String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " " + key + " " + timestamp0 + " - " + timestamp1 + " = " + (timestamp1 - timestamp0) + "\n";
+				String output = "Type: " + txExt.eType + " Index: " + txExt.nIndex + " Status: " + status + " " + key + " " + String.valueOf(timestamp0) + " - " + String.valueOf(timestamp1) + " = " + (timestamp1 - timestamp0) + "\n";
 				MyLogger.print(output);
 			});
 			futures.add(future);  // Add each asynchronous httpBroadcast call to the list
